@@ -13,7 +13,7 @@ import face_input
 FLAGS = tf.app.flags.FLAGS
 
 # Basic model parameters.
-tf.app.flags.DEFINE_integer('batch_size', 32, """Number of images to process in a batch.""")
+tf.app.flags.DEFINE_integer('batch_size', 64, """Number of images to process in a batch.""")
 tf.app.flags.DEFINE_string('data_dir', '/tmp/SETI_data', """Path to the SETI data directory.""")
 tf.app.flags.DEFINE_string('FACE_PATH', 'Faces/positive/', """Path to the SETI data directory.""")
 tf.app.flags.DEFINE_string('NON_FACE_PATH', 'Faces/negative/', """Path to the SETI data directory.""")
@@ -311,8 +311,9 @@ def inference(images):
   # local3
   with tf.variable_scope('local3') as scope:
     # Move everything into depth so we can perform a single matrix multiply.
-    reshape = tf.reshape(pool2, [FLAGS.batch_size, -1])
-    dim = reshape.get_shape()[1].value
+    dim = np.prod(pool2.get_shape()[1:]).value
+    reshape = tf.reshape(pool2, shape=[-1, dim])
+    # dim = reshape.get_shape()[1].value
     weights = _variable_with_weight_decay('weights', shape=[dim, 384], stddev=0.04, wd=0.004)
     biases = _variable_on_cpu('biases', [384], tf.constant_initializer(0.1))
     local3 = tf.nn.relu(tf.matmul(reshape, weights) + biases, name=scope.name)

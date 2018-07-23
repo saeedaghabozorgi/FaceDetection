@@ -19,6 +19,7 @@ def train():
     with graph1.as_default():
         global_step = tf.contrib.framework.get_or_create_global_step()
         features, labels = face.distorted_inputs()
+
         # Get images and labels.
         # Force input pipeline to CPU:0 to avoid operations sometimes ending up on GPU and resulting in a slow down.
         with tf.device('/cpu:0'):
@@ -26,13 +27,13 @@ def train():
             tf.set_random_seed(0)
             # Placeholders
             batch_size_ph = tf.placeholder(tf.int64, name='batch_size_ph')
-            features_data_ph = tf.placeholder(tf.float32, features.shape, 'features_data_ph')
-            labels_data_ph = tf.placeholder(tf.int32, labels.shape, 'labels_data_ph')
+            features_data_ph = tf.placeholder(tf.float32, shape = [None, face.IN_SIZE[0],face.IN_SIZE[1],1] , name ='features_data_ph')
+            labels_data_ph = tf.placeholder(tf.int32, shape = [None,1,1], name ='labels_data_ph')
             # Dataset
             dataset = tf.data.Dataset.from_tensor_slices((features_data_ph, labels_data_ph))
             dataset = dataset.shuffle(30000)
             #dataset = dataset.batch(batch_size_ph)
-            dataset = dataset.apply(tf.contrib.data.batch_and_drop_remainder(FLAGS.batch_size))
+            dataset = dataset.apply(tf.contrib.data.batch_and_drop_remainder(batch_size_ph))
             iterator = tf.data.Iterator.from_structure(dataset.output_types, dataset.output_shapes)
             dataset_init_op = iterator.make_initializer(dataset, name='dataset_init')
             image_tensor, labels_tensor = iterator.get_next()
