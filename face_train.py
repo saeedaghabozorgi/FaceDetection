@@ -24,7 +24,6 @@ def train():
         print('-------------')
         print("reading data ....")
         features, labels = face.distorted_inputs()
-        print(features.shape)
 
 
         # split dataset in train and test
@@ -33,8 +32,9 @@ def train():
         data_size = features.shape[0]
         indices = np.random.permutation(data_size)
         training_idx, test_idx = indices[:int(data_size*0.8)], indices[int(data_size*0.8):]
+        print(training_idx)
         features_train_set, features_test_set = features[training_idx,:], features[test_idx,:]
-        labels_train_set, labels_test_set = labels[training_idx,:], labels[test_idx,:]
+        labels_train_set, labels_test_set = labels[training_idx], labels[test_idx]
         print(features_train_set.shape)
 
         
@@ -45,7 +45,7 @@ def train():
             # Placeholders
             batch_size_ph = tf.placeholder(tf.int64, name='batch_size_ph')
             features_data_ph = tf.placeholder(tf.float32, shape = [None, face.IN_SIZE[0],face.IN_SIZE[1],1] , name ='features_data_ph')
-            labels_data_ph = tf.placeholder(tf.int32, shape = [None,1,1], name ='labels_data_ph')
+            labels_data_ph = tf.placeholder(tf.int32, shape = [None,1], name ='labels_data_ph')
             
             # Dataset
             train_dataset = tf.data.Dataset.from_tensor_slices((features_data_ph, labels_data_ph)).shuffle(30000).batch(batch_size_ph)

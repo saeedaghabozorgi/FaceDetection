@@ -11,14 +11,32 @@ DET_SIZE = (300,300)    #Run all localization at a standard size
 BLUR_DIM = (50,50)      #Dimension for blurring the face location mask
 CONF_THRESH = 0.99      #Confidence threshold to mark a window as a face
 
-X_STEP = 10     #Horizontal slide for the sliding window
-Y_STEP = 10     #Vertical stride for the sliding window
-WIN_MIN = 40    #Minimum sliding window size
-WIN_MAX = 60   #Maximum sliding window size
+X_STEP = 5     #Horizontal slide for the sliding window
+Y_STEP = 5     #Vertical stride for the sliding window
+WIN_MIN = 50    #Minimum sliding window size
+WIN_MAX = 80   #Maximum sliding window size
 WIN_STRIDE = 10   #Stride to increase the sliding window
 
 cwd = os.getcwd()
 path = os.path.join(cwd, 'export_model')
+
+
+def localize(img):
+    features = []
+    for bx in range(WIN_MIN,WIN_MAX,WIN_STRIDE):
+        print(bx)
+        by = bx
+        print("window size:" + str(by))
+        for i in range(0, img.shape[1]-bx, X_STEP):
+            for j in range(0, img.shape[0]-by, Y_STEP):
+                sub_img = cv2.resize(img[i:i+bx,j:j+by],face.IN_SIZE)
+                features.append(np.array(sub_img))
+    features = np.array(features)
+    features = np.expand_dims(features, axis=3)
+    print(features.shape)
+    return features
+
+
 # Restoring
 graph2 = tf.Graph()
 with graph2.as_default():
@@ -41,69 +59,46 @@ with graph2.as_default():
         # Get restored model output
         restored_logits = graph2.get_tensor_by_name('softmax_linear/softmax_linear:0')
         # Get dataset initializing operation
-        dataset_init_op = graph2.get_operation_by_name('dataset_init')
+        dataset_init_op = graph2.get_operation_by_name('train_dataset_init')
 
-        #dataset_init_op.
-        #tf.global_variables_initializer().run(session=sess)
-        # features, labels = face.distorted_inputs()
-        # count = 1
-        # # features= features[0:count,:,:,:].reshape(count,32,32,1)
-        # labels = labels[0:count,:,:].reshape(count,1,1)
-        # print(labels)
-        # sess.run(  dataset_init_op,  feed_dict={ features_data_ph: features,labels_data_ph: labels, batch_size_ph: 1 })
         print("initializaiton ok")       
-        # pred_value = sess.run(restored_logits, feed_dict={features_data_ph: features, batch_size_ph:1})
-        # print(features.shape)
-        # print(pred_value)
-        # print("second")
-        # sess.run(  dataset_init_op,  feed_dict={ features_data_ph: features,labels_data_ph: labels, batch_size_ph: 1 })
-        # pred_value = sess.run(restored_logits, feed_dict={features_data_ph: features, batch_size_ph:1})
-        # print(features.shape)
-        # print(pred_value)
-        # print ("finish test")
-        # Initialize restored dataset
-        # sess.run(
-        #     dataset_init_op,
-        #     feed_dict={
-        #         features_data_ph: features,
-        #         labels_data_ph: labels,
-        #         batch_size_ph: 32
-        #     }
 
-        #)
-        # Compute inference for both batches in dataset
-        # restored_values = []
-        # for i in range(3):
-        #     restored_values.append(sess.run(restored_logits))
-        #     print('Restored values: ', restored_values[i][0])
-            #Run all detection at a fixed size
         
-        img = cv2.imread("demo.jpg",0)
+        img = cv2.imread("demo3.jpg",0)
         img = cv2.resize(img,DET_SIZE)
         mask = np.zeros(img.shape)
         #Run sliding windows of different sizes
-        print(WIN_MIN)
-        print(WIN_MAX)
+        # print(WIN_MIN)
+        # print(WIN_MAX)
+        features = localize(img)
+        batch_size = features.shape[0]
+        sess.run(dataset_init_op,  feed_dict={ features_data_ph: features,labels_data_ph: np.ones(batch_size).reshape(batch_size,1), batch_size_ph: batch_size })
+        pred_value = sess.run(tf.nn.softmax(restored_logits), feed_dict={features_data_ph: features, batch_size_ph:batch_size})
+        out = np.argmax(pred_value,1)
+        print(out)
+
+        # --- test ---
+        #cv2.imshow("input image 1",img)
+        for i in range(len(pred_value)):
+            if pred_value[i][1]>0.7:
+                print (i)
+                print(pred_value[i])
+                sam_image = features[i].reshape((32,32))
+                cv2.imshow("input image 2",sam_image)
+                cv2.waitKey(0)
+                cv2.destroyAllWindows()
+                
+
+        idx = 0
         for bx in range(WIN_MIN,WIN_MAX,WIN_STRIDE):
             by = bx
-            print(by)
+            print("window size:" + str(by))
             for i in range(0, img.shape[1]-bx, X_STEP):
                 for j in range(0, img.shape[0]-by, Y_STEP):
-                    sub_img = cv2.resize(img[i:i+bx,j:j+by],face.IN_SIZE)
-                    features = []
-                    #print(sub_img.shape)
-                    #X = sub_img.reshape((1,face.dim_prod(face.IN_SIZE)))
-                    features.append(sub_img)
-                    features = np.dstack(features)
-                    features = np.rollaxis(features,-1)
-                    features = np.reshape(features,(1,32,32,1))
-                    #print(features.shape)
-                    sess.run(  dataset_init_op,  feed_dict={ features_data_ph: features,labels_data_ph: np.array([[[1]]]), batch_size_ph: 1 })
-                    pred_value = sess.run(tf.nn.softmax(restored_logits), feed_dict={features_data_ph: features, batch_size_ph:1})
-                    #print(np.argmax(pred_value,1))
-                    out = pred_value
-                    if out[0][1] >= 0.8:
+                    if pred_value[idx][1] > 0.5:
+                        print(idx)
                         mask[i:i+bx,j:j+by] = mask[i:i+bx,j:j+by]+1
+                    idx+=1
 
         sess.close()
         mask = np.uint8(255*mask/np.max(mask))
@@ -113,7 +108,10 @@ with graph2.as_default():
         cv2.imshow("input image",img)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
-        # return (faces_x,mask)
+
+
+
 # Check if original inference and restored inference are equal
 # valid = all((v == rv).all() for v, rv in zip(values, restored_values))
 # print('\nInferences match: ', valid)
+

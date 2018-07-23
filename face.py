@@ -118,17 +118,12 @@ def read_face2():
               labels.append(0)
     
     print(len(features))
-    # print(features[0].shape)
-    features = np.dstack(features)
-    features = np.rollaxis(features,-1)
-    #features = tf.convert_to_tensor(features, dtype=tf.float32)
-    features = np.reshape(features,(-1,32,32,1))
-    #np.reshape(
-    labels = np.dstack(labels)
-    labels = np.rollaxis(labels,-1)
-    #labels = tf.convert_to_tensor(labels, dtype=tf.float32)
-    #assert features.shape[0] == labels.shape[0]
-    #dataset = tf.data.Dataset.from_tensor_slices((features,labels))  
+    features = np.array(features)
+    features = np.expand_dims(features, axis=3)
+    print(features.shape)
+    labels = np.array(labels)
+    labels = np.expand_dims(labels, axis=1)
+    print(labels.shape)
     return features,labels
     #return features, labels
 
