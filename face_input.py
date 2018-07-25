@@ -1,17 +1,64 @@
 import os
-
+import cv2
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
+import numpy as np
+FLAGS = tf.app.flags.FLAGS
+
+# Basic model parameters.
+
+tf.app.flags.DEFINE_string('data_dir', '/tmp/SETI_data', """Path to the SETI data directory.""")
+tf.app.flags.DEFINE_string('FACE_PATH', 'Faces/positive/', """Path to the SETI data directory.""")
+tf.app.flags.DEFINE_string('NON_FACE_PATH', 'Faces/negative/', """Path to the SETI data directory.""")
+
+
 
 # Process images of this size. 
-IMAGE_SIZE = 24
+IMAGE_SIZE = 32
+IN_SIZE = (IMAGE_SIZE,IMAGE_SIZE)   #Input dimensions of image for the network
 
-# Global constants describing the SETI data set.
+# Global constants describing the Face data set.
 NUM_CLASSES = 2
-NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 300
+#NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 300
 NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 90
 
       
+def read_face2():
+    features = []
+    labels = []
+    
+    for dir_name in os.listdir(FLAGS.FACE_PATH):
+        dname = FLAGS.FACE_PATH+dir_name
+        if os.path.isdir(dname):
+          print(dname+"/")
+          for img_path in os.listdir(dname):
+              #print(dname+"/"+img_path)
+              t_img = cv2.resize(cv2.imread(dname+"/"+img_path,0),IN_SIZE)
+              features.append(t_img)
+              labels.append(1)
+    print(len(features))
+    for dir_name in os.listdir(FLAGS.NON_FACE_PATH):
+        dname = FLAGS.NON_FACE_PATH+dir_name
+        if os.path.isdir(dname):
+          print(dname+"/")
+          for img_path in os.listdir(dname):
+              #print(dname+"/"+img_path)
+              t_img = cv2.resize(cv2.imread(dname+"/"+img_path,0),IN_SIZE)
+              features.append(t_img)
+              labels.append(0)
+    
+    #shuffling
+
+
+    print(len(features))
+    features = np.array(features)
+    features = np.expand_dims(features, axis=3)
+    print(features.shape)
+    labels = np.array(labels)
+    labels = np.expand_dims(labels, axis=1)
+    print(labels.shape)
+    return features,labels
+    #return features, labels
 
 
 def read_face(filename_queue):

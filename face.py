@@ -14,24 +14,21 @@ FLAGS = tf.app.flags.FLAGS
 
 # Basic model parameters.
 tf.app.flags.DEFINE_integer('batch_size', 64, """Number of images to process in a batch.""")
-tf.app.flags.DEFINE_string('data_dir', '/tmp/SETI_data', """Path to the SETI data directory.""")
-tf.app.flags.DEFINE_string('FACE_PATH', 'Faces/positive/', """Path to the SETI data directory.""")
-tf.app.flags.DEFINE_string('NON_FACE_PATH', 'Faces/negative/', """Path to the SETI data directory.""")
 tf.app.flags.DEFINE_boolean('use_fp16', False, """Train the model using fp16.""")
 
 # Global constants describing the face data set.
 IMAGE_SIZE = face_input.IMAGE_SIZE
 NUM_CLASSES = face_input.NUM_CLASSES
-NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = face_input.NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN
-NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = face_input.NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
+
 
 
 # Constants describing the training process.
 MOVING_AVERAGE_DECAY = 0.9999     # The decay to use for the moving average.
-NUM_EPOCHS_PER_DECAY = 350.0      # Epochs after which learning rate decays.
+# NUM_EPOCHS_PER_DECAY = 2.0      # Epochs after which learning rate decays.
+DECAY_STEPS = 300 # after how many batches
 LEARNING_RATE_DECAY_FACTOR = 0.1  # Learning rate decay factor.
 INITIAL_LEARNING_RATE = 0.001       # Initial learning rate.
-IN_SIZE = (32,32)   #Input dimensions of image for the network
+
 
 # If a model is trained with multiple GPUs, prefix all Op names with tower_name
 # to differentiate the operations. Note that this prefix is removed from the
@@ -52,8 +49,7 @@ def _activation_summary(x):
   # session. This helps the clarity of presentation on tensorboard.
   tensor_name = re.sub('%s_[0-9]*/' % TOWER_NAME, '', x.op.name)
   tf.summary.histogram(tensor_name + '/activations', x)
-  tf.summary.scalar(tensor_name + '/sparsity',
-                                       tf.nn.zero_fraction(x))
+  tf.summary.scalar(tensor_name + '/sparsity', tf.nn.zero_fraction(x))
 
 def _variable_on_cpu(name, shape, initializer):
   """Helper to create a Variable stored on CPU memory.
@@ -93,39 +89,6 @@ def _variable_with_weight_decay(name, shape, stddev, wd):
     tf.add_to_collection('losses', weight_decay)
   return var
 
-def read_face2():
-    features = []
-    labels = []
-    
-    for dir_name in os.listdir(FLAGS.FACE_PATH):
-        dname = FLAGS.FACE_PATH+dir_name
-        if os.path.isdir(dname):
-          print(dname+"/")
-          for img_path in os.listdir(dname):
-              #print(dname+"/"+img_path)
-              t_img = cv2.resize(cv2.imread(dname+"/"+img_path,0),IN_SIZE)
-              features.append(t_img)
-              labels.append(1)
-    print(len(features))
-    for dir_name in os.listdir(FLAGS.NON_FACE_PATH):
-        dname = FLAGS.NON_FACE_PATH+dir_name
-        if os.path.isdir(dname):
-          print(dname+"/")
-          for img_path in os.listdir(dname):
-              #print(dname+"/"+img_path)
-              t_img = cv2.resize(cv2.imread(dname+"/"+img_path,0),IN_SIZE)
-              features.append(t_img)
-              labels.append(0)
-    
-    print(len(features))
-    features = np.array(features)
-    features = np.expand_dims(features, axis=3)
-    print(features.shape)
-    labels = np.array(labels)
-    labels = np.expand_dims(labels, axis=1)
-    print(labels.shape)
-    return features,labels
-    #return features, labels
 
 
 def distorted_inputs():
@@ -140,7 +103,7 @@ def distorted_inputs():
   if not FLAGS.data_dir:
     raise ValueError('Please supply a data_dir')
   
-  features,labels = read_face2()
+  features,labels =  face_input.read_face2()
   if FLAGS.use_fp16:
     features = tf.cast(images, tf.float16)
     labels = tf.cast(labels, tf.float16)
@@ -417,9 +380,9 @@ def train(total_loss, global_step):
     train_op: op for training.
   """
   # Variables that affect learning rate.
-  num_batches_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN / FLAGS.batch_size
-  decay_steps = int(num_batches_per_epoch * NUM_EPOCHS_PER_DECAY)
-
+  # num_batches_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN / FLAGS.batch_size
+  # decay_steps = int(num_batches_per_epoch * NUM_EPOCHS_PER_DECAY)
+  decay_steps = DECAY_STEPS
   # Decay the learning rate exponentially based on the number of steps.
   lr = tf.train.exponential_decay(INITIAL_LEARNING_RATE,
                                   global_step,
@@ -456,7 +419,7 @@ def train(total_loss, global_step):
   with tf.control_dependencies([apply_gradient_op, variables_averages_op]):
     train_op = tf.no_op(name='train')
 
-  return train_op
+  return train_op, lr
 
 
 
