@@ -93,7 +93,7 @@ def train():
                 xx = image_tensor
                 xx = tf.identity(xx, name="xx")
                 tf.global_variables_initializer().run(session=sess)
-                for epoch in range(1):
+                for epoch in range(11):
                     batch = 0
                     train_pred_values = []
                     # Initialize training dataset (could feed epochs in Dataset.repeat(epochs))

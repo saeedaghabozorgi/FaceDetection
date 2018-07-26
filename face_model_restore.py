@@ -12,8 +12,8 @@ CONF_THRESH = 0.99      #Confidence threshold to mark a window as a face
 
 X_STEP = 5     #Horizontal slide for the sliding window
 Y_STEP = 5     #Vertical stride for the sliding window
-WIN_MIN = 50    #Minimum sliding window size
-WIN_MAX = 60   #Maximum sliding window size
+WIN_MIN = 20    #Minimum sliding window size
+WIN_MAX = 80   #Maximum sliding window size
 WIN_STRIDE = 10   #Stride to increase the sliding window
 
 IN_SIZE = (32,32)
@@ -71,7 +71,7 @@ with graph2.as_default():
         print("initializaiton ok")       
 
         
-        img = cv2.imread("demo3.jpg",0)
+        img = cv2.imread("demo.jpg",0)
         img = cv2.resize(img,DET_SIZE)
         mask = np.zeros(img.shape)
         #Run sliding windows of different sizes
@@ -96,7 +96,7 @@ with graph2.as_default():
         print(feaf[0].shape)
         # --- test ---
         #cv2.imshow("input image 1",img)
-        treshhold = 0.9
+
         # for i in range(len(pred_value)):
         #     if pred_value[i][1]>treshhold:
         #         print (i)
@@ -115,7 +115,7 @@ with graph2.as_default():
             print("window size:" + str(by))
             for i in range(0, img.shape[1]-bx, X_STEP):
                 for j in range(0, img.shape[0]-by, Y_STEP):
-                    if pred_value[idx][1] > treshhold:
+                    if pred_value[idx][1] > CONF_THRESH:
                         print(idx)
                         mask[i:i+bx,j:j+by] = mask[i:i+bx,j:j+by]+1
                     idx+=1
